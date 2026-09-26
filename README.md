@@ -58,12 +58,79 @@ every command below.
 
 ## Harnesses tested
 
-CI installs the skill with the `skills` CLI on every push and pull request, once per agent, and
-runs the 83 tests from each installed copy. Six agents are covered: `claude-code`, `codex`,
-`cursor`, `gemini-cli`, `github-copilot` and `opencode`. Five of the six share one user-level skills
-directory (the `skills` CLI decides the target; see its documentation for each agent's path), so
-on a real machine a single installed copy can serve all five. CI still installs and tests each
-agent separately, in its own throwaway home, so a change to any one agent's target is caught.
+CI installs the skill with the [`skills` CLI](https://github.com/vercel-labs/skills) on every push
+and pull request, once per agent in its own throwaway home, and runs the 83 tests from each
+installed copy. Every agent the CLI supports is covered — 79 at the time of writing (`skills`
+1.7.0), of which 77 are installed and tested. The list is read from the CLI at run time, so agents
+it gains later are covered automatically. Two agents are excluded, each with a reason recorded in
+`.github/scripts/smoke-install.sh`: `eve` and `promptscript` — the CLI reports that neither
+supports global skill installation.
+
+Many agents share a global skills directory, so on a real machine one installed copy serves all of
+them; CI still installs and tests each agent separately, so a change to any one agent's target is
+caught. Paths below are from a real run, relative to `~`:
+
+| Global install path | Agents |
+|---|---|
+| `~/.agents/skills` | `amp`, `antigravity`, `antigravity-cli`, `cline`, `codex`, `cursor`, `deepagents`, `dexto`, `droid`, `firebender`, `gemini-cli`, `github-copilot`, `kilo`, `kimi-code-cli`, `loaf`, `opencode`, `replit`, `sarvam-code`, `universal`, `warp`, `zed` |
+| `~/.zencoder/skills` | `zencoder`, `zenflow` |
+| `~/.adal/skills` | `adal` |
+| `~/.aider-desk/skills` | `aider-desk` |
+| `~/.astrbot/data/skills` | `astrbot` |
+| `~/.augment/skills` | `augment` |
+| `~/.autohand/skills` | `autohand-code` |
+| `~/.bob/skills` | `bob` |
+| `~/.claude/skills` | `claude-code` |
+| `~/.codeartsdoer/skills` | `codearts-agent` |
+| `~/.codebuddy/skills` | `codebuddy` |
+| `~/.codeium/windsurf/skills` | `windsurf` |
+| `~/.codemaker/skills` | `codemaker` |
+| `~/.codestudio/skills` | `codestudio` |
+| `~/.commandcode/skills` | `command-code` |
+| `~/.config/crush/skills` | `crush` |
+| `~/.config/devin/skills` | `devin` |
+| `~/.config/goose/skills` | `goose` |
+| `~/.config/kimchi/harness/skills` | `kimchi` |
+| `~/.continue/skills` | `continue` |
+| `~/.forge/skills` | `forgecode` |
+| `~/.fx/skills` | `fx` |
+| `~/.grok/skills` | `grok` |
+| `~/.hermes/skills` | `hermes-agent` |
+| `~/.iflow/skills` | `iflow-cli` |
+| `~/.inferencesh/skills` | `inference-sh` |
+| `~/.jazz/skills` | `jazz` |
+| `~/.junie/skills` | `junie` |
+| `~/.kiro/skills` | `kiro-cli` |
+| `~/.kode/skills` | `kode` |
+| `~/.lingma/skills` | `lingma` |
+| `~/.mcpjam/skills` | `mcpjam` |
+| `~/.minimax/skills` | `minimax-code` |
+| `~/.moxby/skills` | `moxby` |
+| `~/.mux/skills` | `mux` |
+| `~/.neovate/skills` | `neovate` |
+| `~/.ona/skills` | `ona` |
+| `~/.openclaw/skills` | `openclaw` |
+| `~/.openhands/skills` | `openhands` |
+| `~/.pi/agent/skills` | `pi` |
+| `~/.pochi/skills` | `pochi` |
+| `~/.posit/assistant/skills` | `posit-assistant` |
+| `~/.qoder-cn/skills` | `qoder-cn` |
+| `~/.qoder/skills` | `qoder` |
+| `~/.qwen/skills` | `qwen-code` |
+| `~/.reasonix/skills` | `reasonix` |
+| `~/.roo/skills` | `roo` |
+| `~/.rovodev/skills` | `rovodev` |
+| `~/.snowflake/cortex/skills` | `cortex` |
+| `~/.tabnine/agent/skills` | `tabnine-cli` |
+| `~/.terramind/skills` | `terramind` |
+| `~/.tinycloud/skills` | `tinycloud` |
+| `~/.trae-cn/skills` | `trae-cn` |
+| `~/.trae/skills` | `trae` |
+| `~/.vibe/skills` | `mistral-vibe` |
+| `~/.zcode/skills` | `zcode` |
+
+Tested: the skill installs for each agent and its own test suite passes from the installed copy.
+Not tested: each agent's own runtime behaviour when it loads the skill.
 
 The skill itself is harness-neutral: it is a `SKILL.md` plus standard-library Python, with no
 agent-specific commands.
