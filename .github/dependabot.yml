@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # The workflows pin every third-party action to a commit sha, so this is what keeps those
+  # pins current: Dependabot rewrites the sha and the trailing version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

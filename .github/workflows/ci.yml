@@ -1,0 +1,13 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    # Left on a branch rather than a commit sha: this is a first-party reusable workflow in
+    # the same organisation, so it is not third-party supply chain, and a sha pin here would
+    # have to be bumped in every repo that calls it each time the shared workflow changes.
+    uses: macblackstuff-labs/.github/.github/workflows/ci-reusable.yml@main

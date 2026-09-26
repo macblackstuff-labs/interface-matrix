@@ -1,0 +1,98 @@
+# Runbook — interface-matrix
+
+## Overview
+
+An on-demand command-line report generator, not a service: no daemon, no port, no state. Four files —
+`SKILL.md` (the procedure an agent follows), `scripts/interface_matrix.py` (the report generator),
+`scripts/test_interface_matrix.py` (its self-check) and this runbook. Python 3.9 or newer, standard library only: no
+virtualenv, no install step, no dependency to keep current. All commands below are run from this
+skill's own directory.
+
+## Health checks
+
+```bash
+python3 scripts/test_interface_matrix.py
+```
+Expected: `Ran 77 tests ... OK`, exit 0. Also run it under `python3 -O` — the partition
+check must survive assertions being stripped.
+
+```bash
+grep -E '^(import|from) ' scripts/interface_matrix.py
+```
+Expected: only `argparse`, `graphlib`, `re`, `sys`. Any third-party import is a defect — the skill must stay dependency-free.
+
+## Procedures
+
+1. **Run a matrix.** Write the input file (two Markdown tables — see `SKILL.md` §1), then:
+   ```bash
+   python3 scripts/interface_matrix.py INPUT.md > OUTPUT.md
+   ```
+   Exit 0 = report written. Exit 1 = a bad input row; the message names the input line.
+
+2. **Review every unstated pair, not just the sample.** The default prints 20:
+   ```bash
+   python3 scripts/interface_matrix.py INPUT.md --sample 0
+   ```
+   `--sample N` prints N; `--sample 0` prints all. A sample is drawn deterministically: round-robin across the producer rows that have unstated pairs, spread evenly along each row so the picks sweep across columns rather than exhausting the first row. On a 50-component system that is ~2,500 lines, which is the point: the sparse form hides false negatives.
+
+3. **Settle unstated pairs at class level.** Give components a `Class` cell and add a Rules table (`Producer class | Consumer class | Disposition | Reason`, disposition `none` or `review`, `*` = any classed component; a component with a blank `Class` matches no rule, and section 9 names every unclassed component). A `none` rule takes every pair of those classes out of section 7; `review` wins where both match; an explicit interface or `none` row always beats a rule. Section 9 then reports, per rule, the pairs it settled `none` and the pairs it matched at all (a pair any `review` rule reclaimed is matched but not settled; a pair settled by several `none` rules is counted under each), dead rules, `none` rules that contradict an explicit interface, and the unclassed components, and the residue still needing pair-by-pair review. Review the rules as carefully as the pairs they replace — one wrong rule silences hundreds of pairs.
+
+4. **Check what the source says and the inventory does not.**
+   ```bash
+   python3 scripts/interface_matrix.py INPUT.md --source TRANSCRIPT.txt
+   ```
+   Every `L<n>`, `L<a>-<b>` and `L7,11-12` in any cell of any active Components or Interfaces row counts as a citation; a Rules row's `Reason` justifies the rule and models nothing, and a superseded row models nothing any more, so their citations cover no source line, but every one of them is still range-checked; section 10 lists the source lines nothing cites as contiguous spans (blank lines ignored) with the first 80 characters of each span, plus the line/cited/uncited counts. Read every span: that is where an unmodelled component or interface hides. A reversed range such as `L9-7` exits 1 while parsing, with or without `--source`; a citation past the file's last line and `L0` are only detectable against a source file, so they exit 1 only under `--source`.
+
+5. **Change the script.** Add or change a test in `scripts/test_interface_matrix.py` first and
+   watch it fail, then change `scripts/interface_matrix.py`, then rerun the health check. Keep the
+   script standard-library only and Python 3.9-compatible. The `system-adoption-pipeline` skill
+   vendors a byte-identical copy of this script and pins its sha256, so a change here is not live
+   for the pipeline until that copy and its pinned sha256 are updated there too.
+
+
+## Incident playbooks
+
+| Symptom | Diagnosis | Fix |
+|---|---|---|
+| `error: unknown producer 'X' at line N` | The interface row names a component the Components table does not declare — usually a typo or an id renamed in only one table. | Fix the name at that input line, or declare the component. The script refuses to invent a node, by design. |
+| `error: duplicate component 'X' at line N` | Two **active** rows share the name `X`; the message also gives the first active row's line. Superseded rows are never counted, so a retired name may be re-declared. | Supersede one of the two rows (`Status` = `superseded <date>: <reason>`), or rename one. Only one active row per name. |
+| `error: no Components table found (expected columns: component, kind, notes)` | No table header shared two or more names with the Components column set. Tables are a header row plus a `\|---\|` separator, located by their header names, case-insensitively and in any column order. | Add the Components table, or restore its headers. Names, not column positions, are what the parser keys on. |
+| `error: no Interfaces table found (expected columns: producer, consumer, flows, format, trigger, owner)` | Same, for the Interfaces table — including a header-only Interfaces table that was deleted. | Add the Interfaces table with those headers. A header-only table (no rows) is valid. |
+| `error: table at line N is missing column(s): ...` | A header sharing two or more names with either column set was recognised as that table, but a required column is absent — typically a renamed header (`From` for `Producer`, `Name` for `Component`). The message names every missing column and the header's line. | Rename the columns back on that header row. Order does not matter; a table sharing fewer than two names is ignored instead. |
+| `warning: line N: table row outside any table ignored` (exit unchanged) | A line starting with `\|` belongs to no table — usually a blank line left inside a table, which ends it and orphans the rows below. | Delete the blank line so the rows rejoin the table, or delete the orphan rows. The report is produced without them. |
+| `error: superseded component 'X' named as producer at line N (retired at line M)` | An interface row that is itself still active names a component whose every row has a `Status` starting `superseded` (no active row of that name; `M` is the last retirement line). Retiring a component does not retire the rows that use it. | Supersede that interface row too (set its `Status`), or repoint it at the replacement component. |
+| `error: second Interfaces table at line N (first at line M)` (same for Components) | Two tables of the same kind in one file — usually an addendum appended as a fresh table, whose rows the parser would otherwise merge silently. | Move the new rows into the first table, below its existing rows. One table of each kind per file. |
+| `error: rule at line N: unknown disposition 'maybe' (expected none or review)` | A Rules row's `Disposition` is neither `none` nor `review`. Matching is case-insensitive; anything else is rejected rather than guessed. | Write `none` (there is deliberately no interface for those classes) or `review` (still review each pair). |
+| `error: rule at line N names producer class 'X' that no component has` | A Rules row names a class no **active** component carries — a typo, or a class removed from the Components table. Classes are compared exactly, so case matters. | Fix the class token in the rule or on the components, or delete the now-meaningless rule. |
+| Section 9 says `dead rules (no unstated pair matched): line N` | That rule matched nothing: the classes never co-occur as an unstated pair, or explicit rows already settle every such pair. | Delete the rule, or fix its classes. A dead rule is a claim nobody can check. |
+| Section 9 lists a `none` rule under "match an explicit interface" | A rule says those classes never talk, while an Interfaces row says they do. The explicit row wins; the rule is reported so it gets reviewed. | Narrow the rule's classes, or supersede the interface row if the rule is right. |
+| Sections 9 and 10 are absent from the report | Section 9 is printed only when the file has a Rules table, section 10 only with `--source`. Reports without either are byte-identical to earlier runs. | Add the Rules table, or pass `--source FILE`. |
+| `error: citation L99 at input line N is beyond FILE (283 lines)` (exit 1) | A cell cites a source line past the end of the `--source` file — usually the wrong file, or citations copied from a re-numbered transcript. | Point `--source` at the file the citations were written against, or fix the citation at that input line. |
+| `error: citation L0 at input line N: source line numbers start at 1` (exit 1) | A cell cites `L0`; source lines are numbered from 1. Raised under `--source` only. | Fix the citation at that input line. |
+| `error: reversed citation range L9-7 at line N` (exit 1) | A cell's range runs backwards, so it would silently cite nothing. Raised while parsing, with or without `--source`. | Write the range low-to-high (`L7-9`) at that input line. |
+| A `| Disposition | Reason |` table in the file is ignored | Only a header naming both `Producer class` and `Consumer class` is read as the Rules table; other tables are skipped as someone else's. | If it was meant to be the Rules table, give it the two class columns. |
+| `error: argument --sample: must be 0 or more, not -1` (exit 2, argparse) | A negative `--sample`. | Pass `0` for all unstated pairs, or a positive count. |
+| Report shows `superseded rows: N` but a retired row still appears in the findings | The `Status` cell does not start with the word `superseded` — a leading date or `retired` is not recognised. | Write `superseded <date>: <reason>`; anything may follow, but the first word must be `superseded`. Matching is case-insensitive. |
+| `error: empty component name at line N` | A Components row has a blank name cell — usually a stray `\|` or a half-deleted row. | Name the component or delete the row. |
+| `error: below-diagonal mark outside a loop block: partition is wrong` (exit 2) | The partition is wrong: a mark landed below the diagonal outside a feedback-loop block. This is a script defect, not an input defect, and the check runs under `python3 -O` too. | Do not edit the input to silence it. Capture the input file, open an issue, and treat the emitted order as untrusted until the SCC/topological step is fixed. |
+| A cell splits into two, or a row is short | A literal pipe inside a cell was not escaped. A backslash escapes the next character and is dropped: `\|` is a literal pipe in the cell value (re-escaped in the report), and `\\` is a literal backslash that leaves the next `\|` a delimiter, so a cell ending in a Windows path needs `C:\\\| next`. Short rows are padded to the header width. | Escape literal pipes as `\|`, and double a trailing backslash. |
+| Report looks right but the matrix is mostly empty | Only a handful of pairs were declared; everything else is an unstated pair, not a "no". | This is a finding, not a fault. Declare `none` on the pairs that genuinely have no interface, and add the real interfaces. |
+| Everything lands in one giant feedback loop | Legitimate output for a densely coupled system. | Nothing to fix in the tool. A human decides what to assume to break the loop; the script deliberately does not tear. |
+
+## Rollback and recovery
+
+The skill holds no state and writes nothing outside the report you redirect to stdout, so rollback is a
+file revert in whatever repository carries the skill folder. A generated report is disposable: rerun the
+script against the input file. The input file is the artefact worth keeping, and a reviewed matrix is
+amended by a dated addendum rather than rewritten.
+
+## Escalation
+
+1. Bad input (exit 1): the author of the input file fixes it. No escalation.
+2. Script defect (exit 2, crash on valid input, wrong partition): open an issue with the input file
+   attached, and fix it on a branch with a failing test first.
+3. Method disputes — whether a loop is real, whether an unstated pair is truly `none`, which assumption
+   breaks a coupled block — are human decisions and belong to the matrix's reviewer, not to the tool. An
+   LLM-generated DSM reproduced only 357/462 entries of a published matrix
+   ([arXiv 2312.04134](https://arxiv.org/abs/2312.04134)); the human review pass is the control, and it
+   is not delegable.

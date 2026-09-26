@@ -1,0 +1,70 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.x"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: interface-matrix self-check
+        working-directory: skills/interface-matrix
+        run: |
+          python3 scripts/test_interface_matrix.py
+          python3 -O scripts/test_interface_matrix.py
+
+  spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+      - name: install the Agent Skills reference validator
+        run: |
+          # pinned so an upstream change cannot redden an unchanged PR; bump by replacing the sha with the current agentskills/agentskills main
+          SKILLS_REF_SHA=69ef37e9424c0a7ea9dd2293b559e43ec8176379
+          git clone --filter=blob:none --no-checkout https://github.com/agentskills/agentskills.git "$RUNNER_TEMP/agentskills"
+          git -C "$RUNNER_TEMP/agentskills" fetch --depth 1 origin "$SKILLS_REF_SHA"
+          git -C "$RUNNER_TEMP/agentskills" checkout "$SKILLS_REF_SHA"
+          python3 -m pip install -e "$RUNNER_TEMP/agentskills/skills-ref"
+      - name: skills-ref validate
+        run: skills-ref validate skills/interface-matrix
+
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: skills CLI install smoke test (six agents)
+        run: .github/scripts/smoke-install.sh claude-code codex cursor gemini-cli github-copilot opencode
+
+  commit-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: every commit uses a GitHub noreply email
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            .github/scripts/check-commit-emails.sh \
+              "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
+          else
+            .github/scripts/check-commit-emails.sh "${{ github.event.before }}" "${{ github.sha }}"
+          fi
