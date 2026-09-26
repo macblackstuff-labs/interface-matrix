@@ -25,9 +25,6 @@ With the [`skills` CLI](https://github.com/vercel-labs/skills):
 npx skills add macblackstuff-labs/interface-matrix
 ```
 
-While this repository is private, the CLI needs a GitHub token to read it: export `GH_TOKEN` (for
-example from an authenticated GitHub CLI, `export GH_TOKEN=$(gh auth token)`) before running it.
-
 Pick the agents and scope non-interactively, for example globally for two agents:
 
 ```bash
