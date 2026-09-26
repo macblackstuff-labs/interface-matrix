@@ -14,7 +14,7 @@ and useful on its own for planning or auditing a system of roughly eight or more
 |---|---|
 | [`skills/interface-matrix/SKILL.md`](skills/interface-matrix/SKILL.md) | The procedure an agent follows: input format, run, mandatory human review, how to resolve each finding. |
 | [`skills/interface-matrix/scripts/interface_matrix.py`](skills/interface-matrix/scripts/interface_matrix.py) | The report generator. |
-| [`skills/interface-matrix/scripts/test_interface_matrix.py`](skills/interface-matrix/scripts/test_interface_matrix.py) | Its self-check — 77 tests. |
+| [`skills/interface-matrix/scripts/test_interface_matrix.py`](skills/interface-matrix/scripts/test_interface_matrix.py) | Its self-check — 83 tests. |
 | [`skills/interface-matrix/references/RUNBOOK.md`](skills/interface-matrix/references/RUNBOOK.md) | Operating it: health checks, every error message and its fix, rollback, escalation. |
 
 ## Install
@@ -44,7 +44,7 @@ Every path inside the skill is relative to its own folder, so the destination do
 Verify the install from inside the installed folder:
 
 ```bash
-python3 scripts/test_interface_matrix.py    # Ran 77 tests ... OK
+python3 scripts/test_interface_matrix.py    # Ran 83 tests ... OK
 ```
 
 ## Requirements
@@ -57,7 +57,7 @@ every command below.
 ## Harnesses tested
 
 CI installs the skill with the `skills` CLI on every push and pull request, once per agent, and
-runs the 77 tests from each installed copy. Six agents are covered: `claude-code`, `codex`,
+runs the 83 tests from each installed copy. Six agents are covered: `claude-code`, `codex`,
 `cursor`, `gemini-cli`, `github-copilot` and `opencode`. Five of the six share one user-level skills
 directory (the `skills` CLI decides the target; see its documentation for each agent's path), so
 on a real machine a single installed copy can serve all five. CI still installs and tests each
