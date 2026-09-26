@@ -25,7 +25,8 @@ it has run — an interface discovered after packaging re-opens the packaging.
 One Markdown file, two tables. A table is a header row followed by a `|---|` separator;
 the Components and Interfaces tables are the ones whose header (case-insensitive) shares
 at least two names with their column set, so a misnamed required column is an error, not
-a silently skipped table. Everything else — frontmatter, prose, other tables — is ignored.
+a silently skipped table; a header that misspells two or more of a column set is ignored
+with a stderr warning naming its line. Everything else — frontmatter, prose, other tables — is ignored.
 
 ```markdown
 ## Components
@@ -46,8 +47,10 @@ a silently skipped table. Everything else — frontmatter, prose, other tables �
 
 Rules:
 
-- `Kind` blank = internal. `external` = outside the system boundary (human roles and
-  third-party systems), exempt from the boundary check.
+- `Kind` blank = internal. Outside the system boundary (human roles and third-party
+  systems), exempt from the boundary check, when the Kind's first word is `external` or it
+  carries the token `(external)` — `External system` and `actor (external)` both count,
+  `externalize` does not.
 - **List every ordered pair that exchanges anything.** A pair you leave out is an
   unstated pair, not a "no".
 - `Flows` = `none` declares there is deliberately no interface for that ordered pair.
