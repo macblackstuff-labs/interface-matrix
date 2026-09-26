@@ -1,5 +1,10 @@
 # interface-matrix
 
+[![Tests](https://github.com/macblackstuff-labs/interface-matrix/actions/workflows/tests.yml/badge.svg)](https://github.com/macblackstuff-labs/interface-matrix/actions/workflows/tests.yml)
+[![Release](https://img.shields.io/github/v/release/macblackstuff-labs/interface-matrix)](https://github.com/macblackstuff-labs/interface-matrix/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/macblackstuff-labs/interface-matrix)](LICENSE)
+[![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-blue)](https://agentskills.io/specification)
+
 An [Agent Skill](https://agentskills.io/specification) that builds an N² interface matrix
 (a design structure matrix) from a Markdown component and interface inventory, and reports
 the four finding classes that a sparse interface list hides: missing components, interface
