@@ -1,8 +1,8 @@
 # interface-matrix
 
-[![Tests](https://github.com/macblackstuff-labs/interface-matrix/actions/workflows/tests.yml/badge.svg)](https://github.com/macblackstuff-labs/interface-matrix/actions/workflows/tests.yml)
-[![Release](https://img.shields.io/github/v/release/macblackstuff-labs/interface-matrix)](https://github.com/macblackstuff-labs/interface-matrix/releases/latest)
-[![License: MIT](https://img.shields.io/github/license/macblackstuff-labs/interface-matrix)](LICENSE)
+[![Tests](https://github.com/macblackstuff/interface-matrix/actions/workflows/tests.yml/badge.svg)](https://github.com/macblackstuff/interface-matrix/actions/workflows/tests.yml)
+[![Release](https://img.shields.io/github/v/release/macblackstuff/interface-matrix)](https://github.com/macblackstuff/interface-matrix/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/macblackstuff/interface-matrix)](LICENSE)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-blue)](https://agentskills.io/specification)
 
 An [Agent Skill](https://agentskills.io/specification) that builds an N² interface matrix
@@ -12,7 +12,7 @@ gaps, unconsumed outputs and isolated components, feedback loops, and every comp
 nobody has stated either way.
 
 It is pass 3 of the seven-pass decomposition pipeline shipped by
-[`macblackstuff-labs/system-adoption-pipeline`](https://github.com/macblackstuff-labs/system-adoption-pipeline),
+[`macblackstuff/system-adoption-pipeline`](https://github.com/macblackstuff/system-adoption-pipeline),
 and useful on its own for planning or auditing a system of roughly eight or more components.
 
 | Path | What it is |
@@ -27,13 +27,13 @@ and useful on its own for planning or auditing a system of roughly eight or more
 With the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```bash
-npx skills add macblackstuff-labs/interface-matrix
+npx skills add macblackstuff/interface-matrix
 ```
 
 Pick the agents and scope non-interactively, for example globally for two agents:
 
 ```bash
-npx skills add macblackstuff-labs/interface-matrix --skill interface-matrix -g -a claude-code -a codex -y
+npx skills add macblackstuff/interface-matrix --skill interface-matrix -g -a claude-code -a codex -y
 ```
 
 Or copy the folder into wherever your agent reads skills from, keeping its internal layout:

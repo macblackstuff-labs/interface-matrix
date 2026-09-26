@@ -9,7 +9,7 @@ release; older tags do not receive backports.
 
 Report it privately through GitHub, not in a public issue, pull request or discussion:
 
-1. Open [the repository's Security tab](https://github.com/macblackstuff-labs/interface-matrix/security/advisories/new).
+1. Open [the repository's Security tab](https://github.com/macblackstuff/interface-matrix/security/advisories/new).
 2. Use **Report a vulnerability** to open a private security advisory.
 
 Private vulnerability reporting is enabled, so that link works for anyone. Only the maintainers
