@@ -55,6 +55,11 @@ git config user.email "<id>+<username>@users.noreply.github.com"
 `scripts/interface_matrix.py` and `scripts/test_interface_matrix.py`, pinned by sha256. A change
 merged here reaches the pipeline only when it re-vendors a tagged release of this repository.
 
+## Code of conduct
+
+This project follows the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md). Report unacceptable
+behaviour to [conduct@macblackstuff.com](mailto:conduct@macblackstuff.com).
+
 ## License
 
 By contributing you agree that your contribution is licensed under the [MIT License](LICENSE).
