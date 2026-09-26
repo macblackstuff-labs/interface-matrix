@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-09-27
 
+- Moved to [github.com/macblackstuff/interface-matrix](https://github.com/macblackstuff/interface-matrix);
+  every link and install command now uses the new owner. The old `macblackstuff-labs` URLs redirect.
 - Contributing guide, issue forms and pull request template; README badges; release
   headings dated.
 

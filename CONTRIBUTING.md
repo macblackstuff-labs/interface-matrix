@@ -4,7 +4,7 @@ Bug reports, fixes and documentation improvements are welcome.
 
 ## Before you start
 
-- Search [existing issues](https://github.com/macblackstuff-labs/interface-matrix/issues) first.
+- Search [existing issues](https://github.com/macblackstuff/interface-matrix/issues) first.
 - For anything larger than a small fix, open an issue describing the change before writing code.
 - Security problems go through [private vulnerability reporting](SECURITY.md), never a public issue.
 
@@ -13,7 +13,7 @@ Bug reports, fixes and documentation improvements are welcome.
 The skill needs Python 3.9 or newer and nothing else: standard library only, no install step.
 
 ```bash
-git clone https://github.com/macblackstuff-labs/interface-matrix.git
+git clone https://github.com/macblackstuff/interface-matrix.git
 cd interface-matrix/skills/interface-matrix
 python3 scripts/test_interface_matrix.py
 python3 -O scripts/test_interface_matrix.py
@@ -51,7 +51,7 @@ git config user.email "<id>+<username>@users.noreply.github.com"
 
 ## Downstream copy
 
-[system-adoption-pipeline](https://github.com/macblackstuff-labs/system-adoption-pipeline) vendors
+[system-adoption-pipeline](https://github.com/macblackstuff/system-adoption-pipeline) vendors
 `scripts/interface_matrix.py` and `scripts/test_interface_matrix.py`, pinned by sha256. A change
 merged here reaches the pipeline only when it re-vendors a tagged release of this repository.
 
