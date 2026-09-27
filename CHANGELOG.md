@@ -4,6 +4,13 @@
 
 - Copyright holder in `LICENSE` and the README is now `macblackstuff`.
 - Code of conduct (Contributor Covenant 2.1); reports go to `conduct@macblackstuff.com`.
+- README rewritten: what it does, who it is for, a worked example, the
+  components and interfaces it reads, install with the harnesses tested,
+  usage, how it works, the output format section by section, requirements
+  and limits, related projects, and contributing, security and license. The
+  badges added in 0.2.1 are gone.
+- The skill description carries an explicit Not-for clause.
+- CI workflow vendored into the repository.
 
 ## 0.2.1 — 2026-09-27
 
