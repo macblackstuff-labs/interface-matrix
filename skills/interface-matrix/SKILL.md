@@ -1,8 +1,11 @@
 ---
 name: interface-matrix
-description: "Builds an N-squared interface matrix (DSM) from a Markdown component and interface inventory: finds missing components, interface gaps, unconsumed outputs, feedback loops and never-stated component pairs. Use when planning or auditing a system of roughly eight or more components, once the components are known and before work packages are cut, or on any request for an N2 diagram, design structure matrix, interface list, or gap analysis between components."
+description: "Builds an N-squared interface matrix (DSM) from a Markdown component and interface inventory: finds missing components, interface gaps, unconsumed outputs, feedback loops and never-stated component pairs. Use when planning or auditing a system of roughly eight or more components, once the components are known and before work packages are cut, or on any request for an N2 diagram, design structure matrix, interface list, or gap analysis between components. Not for dependency graphs of source files, for drawing diagrams, or for discovering components on its own: it needs a hand-written Components and Interfaces inventory in Markdown."
 license: MIT
 compatibility: Requires Python 3.9 or newer. Standard library only — no dependencies and no install step.
+metadata:
+  author: macblackstuff
+  version: 0.2.1
 ---
 
 # interface-matrix
