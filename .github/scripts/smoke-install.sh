@@ -29,7 +29,7 @@ reason_for() {
 list_agents() {
   local home out
   home=$(mktemp -d)
-  out=$(HOME="$home" npx --yes skills add "$repo" --skill interface-matrix -g \
+  out=$(HOME="$home" XDG_CONFIG_HOME="$home/.config" XDG_DATA_HOME="$home/.local/share" npx --yes skills add "$repo" --skill interface-matrix -g \
     -a __invalid__ -y --copy 2>&1 | strip_ansi | tr '\n' ' ' || true)
   rm -rf "$home"
   printf '%s' "${out##*Valid agents:}" \
@@ -46,7 +46,7 @@ else
 fi
 
 echo "== skills add --list"
-home=$(mktemp -d); HOME="$home" npx --yes skills add "$repo" --list; rm -rf "$home"
+home=$(mktemp -d); HOME="$home" XDG_CONFIG_HOME="$home/.config" XDG_DATA_HOME="$home/.local/share" npx --yes skills add "$repo" --list; rm -rf "$home"
 
 total=${#agents[@]}
 passed=0
@@ -64,7 +64,7 @@ for agent in "${agents[@]}"; do
   fi
   home=$(mktemp -d)
   echo "== skills add -a $agent"
-  HOME="$home" npx --yes skills add "$repo" --skill interface-matrix -g -a "$agent" -y --copy
+  HOME="$home" XDG_CONFIG_HOME="$home/.config" XDG_DATA_HOME="$home/.local/share" npx --yes skills add "$repo" --skill interface-matrix -g -a "$agent" -y --copy
 
   found=$(find "$home" -path "*/interface-matrix/SKILL.md" -print)
   count=$(printf '%s' "$found" | grep -c . || true)
