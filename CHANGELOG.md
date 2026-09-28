@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI installs and self-tests the skill for every agent the `skills` CLI supports, with the
+  agent list read from the CLI at run time.
 - Copyright holder in `LICENSE` and the README is now `macblackstuff`.
 - Code of conduct (Contributor Covenant 2.1); reports go to `conduct@macblackstuff.com`.
 - README rewritten: what it does, who it is for, a worked example, the

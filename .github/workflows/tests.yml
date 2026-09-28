@@ -51,8 +51,8 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
-      - name: skills CLI install smoke test (six agents)
-        run: .github/scripts/smoke-install.sh claude-code codex cursor gemini-cli github-copilot opencode
+      - name: skills CLI install smoke test (all agents)
+        run: .github/scripts/smoke-install.sh
 
   commit-emails:
     runs-on: ubuntu-latest
