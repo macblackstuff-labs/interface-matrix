@@ -2,8 +2,8 @@
 
 ## Supported version
 
-Only the latest release is supported. The first release is v0.1.0. Fixes are published as a new
-release; older tags do not receive backports.
+Only the latest release is supported. Fixes are published as a new release; older tags do
+not receive backports.
 
 ## Reporting a vulnerability
 

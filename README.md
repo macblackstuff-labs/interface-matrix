@@ -12,16 +12,19 @@ you or by an agent from a transcript, spec or code read. Each interface row name
 producer, a consumer and four attributes: flows, format, trigger, owner.
 
 The script builds the directed graph of the stated interfaces, partitions it (strongly
-connected components, then a topological order of the condensation) and reports what the
-list does not say out loud: interface rows with missing attributes, rows whose producer or
-consumer is still `?`, internal components nothing feeds, outputs nothing consumes,
-isolated components, feedback loops, and every ordered component pair nobody has stated
-either way. With `--source FILE` it also reports the lines of the source document that no
-cell cites.
+connected components, then a topological order of the condensation) and reports four
+classes of finding — missing components, interface gaps, boundary problems (unconsumed
+outputs and isolated components) and feedback loops — plus every component pair nobody
+has stated either way. With `--source FILE` it also reports the lines of the source
+document that no cell cites.
 
 The output is one Markdown report on stdout: numbered sections plus the matrix itself, row
 feeds column. Nothing is inferred and no gap is filled in for you — a gap stays a gap until
 a human resolves it.
+
+An N² matrix (N-squared; a design structure matrix, or DSM) lists every component on both
+axes, so each of the N×N cells is a yes/no/unknown about one directed pair — that is what
+a flat interface list cannot show.
 
 ## Who it is for
 
@@ -33,7 +36,10 @@ and it works on its own.
 
 ## Example
 
-From `skills/interface-matrix`, write this to `example.md`:
+A ready-made input lives at [`examples/example.md`](examples/example.md), and the real
+report it produces is committed beside it as
+[`examples/example-output.md`](examples/example-output.md). To follow along, from
+`skills/interface-matrix` write this to `example.md`:
 
 ```markdown
 ## Components
@@ -79,13 +85,13 @@ Eight sections come back. The summary, the two finding tables and the matrix:
 
 | line | producer | consumer | flows |
 |---|---|---|---|
-| line 16 | ? | Analyst | weekly digest |
+| line 23 | ? | Analyst | weekly digest |
 
 ## 3. Interface gaps
 
 | line | producer | consumer | missing |
 |---|---|---|---|
-| line 15 | Store | Scorer | Format, Trigger |
+| line 22 | Store | Scorer | Format, Trigger |
 ```
 
 ```
@@ -120,17 +126,24 @@ component pairs nobody has ruled in or out.
 Verify the install from inside the installed folder with [`scripts/test_interface_matrix.py`](skills/interface-matrix/scripts/test_interface_matrix.py):
 
 ```bash
-python3 scripts/test_interface_matrix.py    # Ran 83 tests ... OK
+python3 scripts/test_interface_matrix.py    # Ran 84 tests ... OK
 ```
+
+On Windows the interpreter is `py -3` (`py -3 scripts/interface_matrix.py example.md`);
+the script writes UTF-8 whatever the console codepage is, so the report is identical on
+every platform.
 
 ### Harnesses tested
 
-CI installs the skill with the [`skills` CLI`](https://github.com/vercel-labs/skills) on every push
-and pull request, once per agent in its own throwaway home, and runs the 83 tests from each
+CI installs the skill with the [`skills` CLI](https://github.com/vercel-labs/skills) on every push
+and pull request, once per agent in its own throwaway home, and runs the 84 tests from each
 installed copy. Every agent the CLI supports is covered — 79 at the time of writing (`skills`
 1.7.0), of which 77 are installed and tested; the list is read from the CLI at run time. Two
 agents are excluded with reasons recorded in `.github/scripts/smoke-install.sh`: `eve` and
 `promptscript` — the CLI reports that neither supports global skill installation.
+
+A separate CI job runs the same tests on Windows and macOS, so the skill is verified on the
+platforms its users actually run, not just Linux.
 
 The skill itself is harness-neutral: it is a `SKILL.md` plus standard-library Python, with no
 agent-specific commands.
@@ -148,6 +161,8 @@ python3 scripts/interface_matrix.py INPUT.md > OUTPUT.md
 python3 scripts/interface_matrix.py INPUT.md --sample 0
 python3 scripts/interface_matrix.py INPUT.md --source TRANSCRIPT.txt
 ```
+
+On Windows use `py -3` in place of `python3`.
 
 `--sample N` sets how many unstated pairs are printed (default 20, `0` = all).
 `--source FILE` adds the coverage section over the document the inventory was read from.

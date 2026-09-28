@@ -1,8 +1,8 @@
 ---
 name: interface-matrix
-description: "Builds an N-squared interface matrix (DSM) from a Markdown component and interface inventory: finds missing components, interface gaps, unconsumed outputs, feedback loops and never-stated component pairs. Use when planning or auditing a system of roughly eight or more components, once the components are known and before work packages are cut, or on any request for an N2 diagram, design structure matrix, interface list, or gap analysis between components. Not for dependency graphs of source files, for drawing diagrams, or for discovering components on its own: it needs a hand-written Components and Interfaces inventory in Markdown."
+description: "Builds an N-squared interface matrix (DSM) from a Markdown component and interface inventory: finds missing components, interface gaps, unconsumed outputs, feedback loops and never-stated component pairs. Use when planning or auditing a system of eight or more components, before work packages are cut, or on any N2 diagram, design structure matrix or gap-analysis request. Not for source-code dependency graphs, drawing, or discovering components: it needs a hand-written inventory."
 license: MIT
-compatibility: Requires Python 3.9 or newer. Standard library only — no dependencies and no install step.
+compatibility: "Requires Python 3.9 or newer (Windows: py -3). Standard library only — no dependencies and no install step."
 metadata:
   author: macblackstuff
   version: 0.2.1
@@ -18,7 +18,8 @@ Pass 3 of 7 in the systems-engineering decomposition pipeline.
   purpose, declared inputs/outputs and owner.
 - **Output:** the interface list plus four finding classes. Gaps feed the
   SOURCE/RESEARCH/USER/DEFAULT gap register; the partitioned order and the loop
-  blocks feed the work packages and their sequencing.
+  blocks feed the work packages (the units of planned work the packaging pass cuts
+  from this output) and their sequencing.
 
 Do not run this before the components are known, and do not cut work packages before
 it has run — an interface discovered after packaging re-opens the packaging.
@@ -79,14 +80,17 @@ Rules:
   (`*` = any classed component): not listed, not sampled. A component with a blank `Class`
   matches no rule, not even `*`, so a forgotten Class cell can never drop pairs from
   review — section 9 names every unclassed component. `review` wins where both match. An
-  explicit interface or `none` row always beats a rule. Section 9 reports, per rule, the
-  pairs it settled `none` and the pairs it matched at all (a pair any `review` rule
-  reclaimed is matched but not settled; a pair settled by several `none`
-  rules is counted under each, so the settled column sums to at least the total), dead rules, `none` rules that match an explicit interface, the unclassed
-  components, and the residue left for pair-by-pair review. An unknown `Disposition`, or a
-  class no component has, exits 1. A table is read as the Rules table only if its header
-  names both `Producer class` and `Consumer class`, so a foreign `| Disposition | Reason |`
-  table is left alone.
+  explicit interface or `none` row always beats a rule.
+- Section 9 (rules audit, printed only when a Rules table is present) reports, per rule:
+  - the pairs it settled `none`;
+  - the pairs it matched at all — a pair any `review` rule reclaimed is matched but not
+    settled, and a pair settled by several `none` rules is counted under each, so the
+    settled column sums to at least the total;
+  - dead rules, and `none` rules that match an explicit interface;
+  - the unclassed components, and the residue left for pair-by-pair review.
+- An unknown `Disposition`, or a class no component has, exits 1. A table is read as the
+  Rules table only if its header names both `Producer class` and `Consumer class`, so a
+  foreign `| Disposition | Reason |` table is left alone.
 - `Source` and `Status` are optional; the other six interface columns are required.
   A `Status` starting `superseded` retires the row (see §5).
 - One Components table and one Interfaces table per file. A second table of either
@@ -98,8 +102,9 @@ Rules:
 
 ## 2. Run it
 
-Run from this skill's own directory; every `scripts/...` path below is relative to it.
-Python 3.9 or newer, standard library only.
+Run scripts from the directory containing this SKILL.md — every `scripts/...` path below
+is relative to it, wherever the skill is installed and whatever the working directory is.
+Python 3.9 or newer, standard library only (`python3`; on Windows `py -3`).
 
 ```bash
 python3 scripts/interface_matrix.py INPUT.md > OUTPUT.md
@@ -110,16 +115,20 @@ python3 scripts/interface_matrix.py INPUT.md --sample 0
 python3 scripts/interface_matrix.py INPUT.md --source TRANSCRIPT.txt
 ```
 
-`--source FILE` checks coverage of the file the inventory was read from: every `L<n>`,
-`L<a>-<b>` and `L7,11-12` in any cell of any active Components or Interfaces row counts
-as cited — a Rules row's `Reason` justifies the rule and models nothing, and a superseded
-row models nothing any more, so their citations do not cover a line, though they are still
-range-checked — and section 10
-lists the uncited lines as contiguous spans (blank lines ignored) with counts. Those spans
-are where an unmodelled component or interface hides. A citation past the file's last line exits 1, as
-does `L0` (source line numbers start at 1); both need `--source` to be caught. A reversed
-range such as `L9-7` exits 1 while parsing, with or without `--source`. Every one of these
-errors names the input line of the row that carries the citation.
+`--source FILE` checks coverage of the file the inventory was read from:
+
+- Every `L<n>`, `L<a>-<b>` and `L7,11-12` in any cell of any **active** Components or
+  Interfaces row counts as cited.
+- A Rules row's `Reason` justifies the rule and models nothing, and a superseded row
+  models nothing any more, so their citations do not cover a line — though they are
+  still range-checked.
+- Section 10 lists the uncited lines as contiguous spans (blank lines ignored) with
+  counts. Those spans are where an unmodelled component or interface hides.
+
+Errors, each naming the input line of the row that carries the citation: a citation past
+the file's last line exits 1, as does `L0` (source line numbers start at 1); both need
+`--source` to be caught. A reversed range such as `L9-7` exits 1 while parsing, with or
+without `--source`.
 
 `--sample N` sets how many unstated pairs are printed (default 20, `0` = all). The
 sample is drawn deterministically: round-robin across the producer rows that have
@@ -146,7 +155,9 @@ So review, cell by cell:
 1. Every listed row: are the four attributes right, and does the source support them?
    Then, per row: can the named producer actually produce this flow, and can the named
    consumer actually use it? If not, replace that endpoint with `?` and rerun — a named
-   but incapable endpoint is how a missing component hides (P7's I14 and I15).
+   but incapable endpoint is how a missing component hides (for example, a component
+   "Ingest" named as consumer of an agent's reply: it cannot hold that conversation, so
+   the real endpoint is a component nobody declared yet).
 2. The rules (section 9): is each `none` rule true of every pair it matched? A dead rule
    is wrong or premature; a rule that also matches an explicit interface contradicts it.
 3. The residue (section 7): for each pair, is "no interface" actually true? Raise
