@@ -125,12 +125,12 @@ python3 scripts/test_interface_matrix.py    # Ran 83 tests ... OK
 
 ### Harnesses tested
 
-CI installs the skill with the `skills` CLI on every push and pull request, once per agent with `--copy`, and
-runs the 83 tests from each installed copy. Six agents are covered: `claude-code`, `codex`,
-`cursor`, `gemini-cli`, `github-copilot` and `opencode`. Five of the six share one user-level skills
-directory (the `skills` CLI decides the target; see its documentation for each agent's path), so
-on a real machine a single installed copy can serve all five. CI still installs and tests each
-agent separately, in its own throwaway home, so a change to any one agent's target is caught.
+CI installs the skill with the [`skills` CLI`](https://github.com/vercel-labs/skills) on every push
+and pull request, once per agent in its own throwaway home, and runs the 83 tests from each
+installed copy. Every agent the CLI supports is covered — 79 at the time of writing (`skills`
+1.7.0), of which 77 are installed and tested; the list is read from the CLI at run time. Two
+agents are excluded with reasons recorded in `.github/scripts/smoke-install.sh`: `eve` and
+`promptscript` — the CLI reports that neither supports global skill installation.
 
 The skill itself is harness-neutral: it is a `SKILL.md` plus standard-library Python, with no
 agent-specific commands.
