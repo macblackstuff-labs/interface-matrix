@@ -154,6 +154,13 @@ class TestErrors(unittest.TestCase):
         proc = run(doc("| Ingest | Store | rows | csv | cron | me | S:L1 |\n"))
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
+    def test_generation_with_candidates_still_exits_0(self):
+        # a missing-component candidate is a report finding, not an input error:
+        # only --certify refuses to pass one
+        proc = run(doc("| ? | Scorer | rows | csv | cron | me |  |\n"))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("missing-component candidates: 1", proc.stdout)
+
 
 class TestParsing(unittest.TestCase):
     def test_escaped_pipe_is_one_cell(self):
@@ -998,6 +1005,218 @@ class TestSourceCoverage(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("Nothing cites these spans", proc.stdout)
         self.assertNotIn("UnicodeEncodeError", proc.stderr)
+
+
+LEDGER_HEAD = (
+    "# Review ledger\n"
+    "\n"
+    "| Kind | Finding | Disposition | Reason |\n"
+    "|---|---|---|---|\n"
+)
+
+
+def ledger(*rows):
+    """A ledger file: its disposition table under a heading."""
+    return LEDGER_HEAD + "".join(rows)
+
+
+def run_certify(text, ledger_text, *args):
+    """Certify `text` against `ledger_text` written to its own temp file."""
+    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as fh:
+        fh.write(ledger_text)
+        path = fh.name
+    try:
+        return run(text, "--certify", path, *args)
+    finally:
+        os.unlink(path)
+
+
+def run_certify_source(text, ledger_text, source_text):
+    """Certify with --source, as run_source() is to run()."""
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as fh:
+        fh.write(source_text)
+        src = fh.name
+    try:
+        return run_certify(text, ledger_text, "--source", src)
+    finally:
+        os.unlink(src)
+
+
+TWO_COMPONENTS = (
+    "## Components\n\n"
+    "| Component | Kind | Notes |\n"
+    "|---|---|---|\n"
+    "| Ingest |  | pulls |\n"
+    "| Store |  | keeps |\n\n"
+)
+
+# one finding of each kind the wildcard rule cannot settle: a candidate (line 22),
+# a gap (line 23) and all three boundary findings; the rule settles every classed pair
+CERT_INPUT = doc_rules(
+    "| Ingest | Store | rows | csv | cron | me | S:L1 |\n"
+    "| ? | Scorer | digest | csv | cron | me |  |\n"
+    "| Ingest | Analyst | rows |  | ? | me |  |\n",
+    "| * | * | none | every classed pair is settled |\n",
+)
+
+FULL_LEDGER = ledger(
+    "| candidate | line 22 | resolved | producer is Ingest, row fixed upstream |\n"
+    "| gap | line 23 | open-parked | blocked on the vendor's format doc |\n"
+    "| boundary | Ingest | explained | the pipeline's entry point |\n"
+    "| boundary | Scorer | explained | runs on a manual trigger |\n"
+    "| boundary | Store | explained | the terminal sink |\n"
+)
+
+
+class TestCertification(unittest.TestCase):
+    def test_fully_reviewed_input_certifies(self):
+        proc = run_certify(CERT_INPUT, FULL_LEDGER)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("# Interface matrix certification", proc.stdout)
+        self.assertIn("- input: ", proc.stdout)
+        self.assertIn("- ledger: ", proc.stdout)
+        self.assertIn("- gate: certified", proc.stdout)
+        self.assertIn("- flags: --sample 20\n", proc.stdout)
+        self.assertIn("- blockers: none", proc.stdout)
+        self.assertIn("- advisories: 1", proc.stdout)
+        self.assertIn("gap line 23 (Ingest -> Analyst): open-parked — blocked on the "
+                      "vendor's format doc", proc.stdout)
+
+    def test_open_gap_is_an_advisory_and_a_filled_gap_is_not(self):
+        # the gap is a finding either way; an open disposition is an advisory in
+        # the record, a non-open one simply satisfies the gate
+        text = doc(
+            "| Ingest | Store | rows |  | cron | me | S:L1 |\n"
+            "| Store | Ingest | acks | csv | cron | me | S:L1 |\n",
+            components=TWO_COMPONENTS,
+        )
+        gap = "line %d" % lineno(text, "| Ingest | Store | rows |  | cron")
+        opened = run_certify(text, ledger(
+            "| gap | %s | open-parked | waiting on the vendor |\n" % gap))
+        self.assertEqual(opened.returncode, 0, opened.stderr)
+        self.assertIn("- advisories: 1", opened.stdout)
+        self.assertIn("gap %s (Ingest -> Store): open-parked — waiting on the vendor"
+                      % gap, opened.stdout)
+        filled = run_certify(text, ledger(
+            "| gap | %s | filled | the attrs live in the ADR |\n" % gap))
+        self.assertEqual(filled.returncode, 0, filled.stderr)
+        self.assertIn("- advisories: none", filled.stdout)
+
+    def test_unresolved_candidate_blocks(self):
+        proc = run_certify(CERT_INPUT, ledger(
+            "| gap | line 23 | open-parked | blocked |\n"
+            "| boundary | Ingest | explained | the entry point |\n"
+            "| boundary | Scorer | explained | the manual trigger |\n"
+            "| boundary | Store | explained | the terminal sink |\n",
+        ))
+        self.assertEqual(proc.returncode, 3, proc.stderr)
+        self.assertIn("- gate: refused", proc.stdout)
+        self.assertIn("- blockers: 1", proc.stdout)
+        self.assertIn("missing-component candidate line 22 (? -> Scorer) is unresolved",
+                      proc.stdout)
+
+    def test_unstated_pair_without_disposition_blocks(self):
+        text = doc("| Ingest | Store | rows | csv | cron | me | S:L1 |\n",
+                   components=TWO_COMPONENTS)
+        proc = run_certify(text, ledger(
+            "| boundary | Ingest | explained | the entry point |\n"
+            "| boundary | Store | explained | the terminal sink |\n",
+        ))
+        self.assertEqual(proc.returncode, 3, proc.stderr)
+        self.assertIn("- blockers: 1", proc.stdout)
+        self.assertIn("unstated pair Store -> Ingest has no disposition", proc.stdout)
+        self.assertNotIn("boundary finding", proc.stdout)
+
+    def test_uncited_span_blocks_under_source_until_dispositioned(self):
+        text = doc("| Ingest | Store | rows | csv | cron | me | S:L1 |\n",
+                   components=TWO_COMPONENTS)
+        led = ledger(
+            "| boundary | Ingest | explained | the entry point |\n"
+            "| boundary | Store | explained | the terminal sink |\n"
+            "| pair | Store -> Ingest | none | nothing flows back |\n",
+        )
+        proc = run_certify_source(text, led, SOURCE)
+        self.assertEqual(proc.returncode, 3, proc.stderr)
+        self.assertIn("uncited span L2-6", proc.stdout)
+        read = run_certify_source(text, led + "| span | L2-6 | read | narrative prose |\n",
+                                  SOURCE)
+        self.assertEqual(read.returncode, 0, read.stderr)
+        self.assertIn("- gate: certified", read.stdout)
+
+    def test_bad_input_row_exits_1_in_certify_mode_too(self):
+        proc = run_certify(doc("| Ingest | Nope | rows | csv | cron | me | S:L1 |\n"),
+                           FULL_LEDGER)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("Nope", proc.stderr)
+
+    def test_malformed_ledger_row_exits_1_naming_the_line(self):
+        led = LEDGER_HEAD + "| candidate | line 22 | resolved |\n"
+        proc = run_certify(CERT_INPUT, led)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("ledger row at line %d" % lineno(led, "| candidate |"), proc.stderr)
+        self.assertIn("expected 4", proc.stderr)
+
+    def test_unknown_ledger_kind_exits_1(self):
+        led = FULL_LEDGER + "| mystery | line 22 | resolved | no such kind |\n"
+        proc = run_certify(CERT_INPUT, led)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("unknown kind 'mystery'", proc.stderr)
+
+    def test_ledger_row_for_an_unknown_finding_exits_1(self):
+        led = FULL_LEDGER + "| boundary | Ghost | explained | not a component |\n"
+        proc = run_certify(CERT_INPUT, led)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("Ghost", proc.stderr)
+        self.assertIn("matches no boundary finding", proc.stderr)
+
+    def test_span_row_without_source_exits_1_naming_the_flag(self):
+        led = FULL_LEDGER + "| span | L2-6 | read | narrative prose |\n"
+        proc = run_certify(CERT_INPUT, led)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("L2-6", proc.stderr)
+        self.assertIn("--source", proc.stderr)
+
+    def test_duplicate_ledger_row_exits_1_naming_both_lines(self):
+        led = FULL_LEDGER + "| boundary | Scorer | explained | twice |\n"
+        proc = run_certify(CERT_INPUT, led)
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        self.assertIn("both disposition boundary 'Scorer'", proc.stderr)
+        self.assertIn("lines %d and %d" % (lineno(led, "manual trigger"),
+                                           lineno(led, "twice")), proc.stderr)
+
+    def test_header_only_ledger_lists_every_finding(self):
+        proc = run_certify(CERT_INPUT, LEDGER_HEAD)
+        self.assertEqual(proc.returncode, 3, proc.stdout)
+        self.assertIn("- gate: refused", proc.stdout)
+        self.assertIn("missing-component candidate line 22 (? -> Scorer) is unresolved",
+                      proc.stdout)
+        self.assertIn("interface gap line 23 (Ingest -> Analyst, missing Format, Trigger)"
+                      " has no disposition", proc.stdout)
+        self.assertIn("boundary finding Ingest (nothing feeds it) is unexplained",
+                      proc.stdout)
+        self.assertIn("boundary finding Scorer (isolated) is unexplained", proc.stdout)
+        self.assertIn("boundary finding Store (nothing consumes its output) is unexplained",
+                      proc.stdout)
+        self.assertIn("- blockers: 5", proc.stdout)
+        self.assertIn("refused", proc.stderr)
+
+    def test_finding_free_input_certifies_with_an_empty_ledger(self):
+        text = doc(
+            "| Ingest | Store | rows | csv | cron | me | S:L1 |\n"
+            "| Store | Ingest | acks | csv | cron | me | S:L1 |\n",
+            components=TWO_COMPONENTS,
+        )
+        proc = run_certify(text, LEDGER_HEAD)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("- gate: certified", proc.stdout)
+        self.assertIn("- blockers: none", proc.stdout)
+        self.assertIn("- advisories: none", proc.stdout)
+
+    def test_certify_documented_in_help(self):
+        proc = run(doc(""), "--help")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("--certify", proc.stdout)
+        self.assertIn("certification record", proc.stdout)
 
 
 if __name__ == "__main__":
