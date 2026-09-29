@@ -54,6 +54,27 @@ jobs:
       - name: skills CLI install smoke test (all agents)
         run: .github/scripts/smoke-install.sh
 
+  portability:
+    # The skill must work where its users are: Windows consoles use legacy
+    # codepages (cp437/cp1252), macOS ships Python 3 via xcode/clang tooling.
+    # `python3` is on PATH on both runners; no shell:true needed since the
+    # command is a single invocation.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+      - name: interface-matrix self-check (${{ matrix.os }})
+        working-directory: skills/interface-matrix
+        run: |
+          python3 scripts/test_interface_matrix.py
+          python3 -O scripts/test_interface_matrix.py
+
   commit-emails:
     runs-on: ubuntu-latest
     steps:
