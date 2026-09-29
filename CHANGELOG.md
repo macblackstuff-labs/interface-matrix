@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+(none)
+
+## 0.3.0 — 2026-09-29
+
 - Windows is a supported platform: the script reconfigures stdout to UTF-8, so the report
   is byte-identical on legacy Windows console codepages (cp437/cp1252) instead of crashing
   with `UnicodeEncodeError` mid-report. Regression-tested; a CI `portability` job runs the

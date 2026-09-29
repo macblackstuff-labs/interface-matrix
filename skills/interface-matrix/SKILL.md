@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Requires Python 3.9 or newer (Windows: py -3). Standard library only — no dependencies and no install step."
 metadata:
   author: macblackstuff
-  version: 0.2.1
+  version: 0.3.0
 ---
 
 # interface-matrix
