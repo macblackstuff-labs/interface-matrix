@@ -55,8 +55,8 @@ report it produces is committed beside it as
 
 | Producer | Consumer | Flows | Format | Trigger | Owner | Source | Status |
 |---|---|---|---|---|---|---|---|
-| Ingest | Store | raw event rows | ndjson file | nightly cron | platform | S:L42 |  |
-| Store | Scorer | event batches | ? | ? | platform | S:L44 |  |
+| Ingest | Store | raw event rows | ndjson file | nightly cron | platform |  |  |
+| Store | Scorer | event batches | ? | ? | platform |  |  |
 | ? | Analyst | weekly digest | ? | ? | ? |  |  |
 ```
 
@@ -110,6 +110,11 @@ Three stated rows, and the report names one unowned digest producer, one interfa
 its format and trigger, a component nothing feeds, an output nothing consumes, and ten
 component pairs nobody has ruled in or out.
 
+The example is also certified: [`examples/example-ledger.md`](examples/example-ledger.md)
+is the review ledger that dispositions every finding it produces, and
+[`examples/example-ledger.cert.md`](examples/example-ledger.cert.md) is the certification
+record the passing `--certify` run wrote.
+
 ## Install
 
 | Harness | Command | Notes |
@@ -126,7 +131,7 @@ component pairs nobody has ruled in or out.
 Verify the install from inside the installed folder with [`scripts/test_interface_matrix.py`](skills/interface-matrix/scripts/test_interface_matrix.py):
 
 ```bash
-python3 scripts/test_interface_matrix.py    # Ran 84 tests ... OK
+python3 scripts/test_interface_matrix.py    # Ran 125 tests ... OK
 ```
 
 On Windows the interpreter is `py -3` (`py -3 scripts/interface_matrix.py example.md`);
@@ -136,7 +141,7 @@ every platform.
 ### Harnesses tested
 
 CI installs the skill with the [`skills` CLI](https://github.com/vercel-labs/skills) on every push
-and pull request, once per agent in its own throwaway home, and runs the 84 tests from each
+and pull request, once per agent in its own throwaway home, and runs the 125 tests from each
 installed copy. Every agent the CLI supports is covered — 79 at the time of writing (`skills`
 1.7.0), of which 77 are installed and tested; the list is read from the CLI at run time. Two
 agents are excluded with reasons recorded in `.github/scripts/smoke-install.sh`: `eve` and
@@ -166,6 +171,39 @@ On Windows use `py -3` in place of `python3`.
 
 `--sample N` sets how many unstated pairs are printed (default 20, `0` = all).
 `--source FILE` adds the coverage section over the document the inventory was read from.
+
+### Certifying a reviewed matrix
+
+Findings are reviewed into a ledger — one table,
+`Kind | Finding | Disposition | Reason | Reviewer | Date | Fingerprint`, one row per
+finding, keyed by identity rather than input line. Start it as nothing but the header row
+and certify once; every finding comes back an `unreviewed:` blocker carrying its current
+fingerprint, so the refusal record doubles as the review worksheet:
+
+```bash
+python3 scripts/interface_matrix.py INPUT.md --certify INPUT.ledger.md
+```
+
+Disposition each finding in the ledger — the fingerprints to paste are in the record —
+and certify again. Exit 0 writes `<ledger>.cert.md` beside the ledger: the certification
+record, binding the input, the report and (under `--source`) the source file by sha256,
+plus the flags the review ran under, which every later certification must replay exactly.
+A citing input must certify with `--source` — the gate refuses it otherwise — and the
+record a pass stamps into the ledger anchors the input and source by sha256, so any
+post-review edit re-opens the review. The finished deliverable is four files shipped
+together: the report, its certification record, the input, and the ledger — five when
+the review ran under `--source`, adding the source file. The record's paths are
+invocation-relative and must be replayed verbatim. The
+ledger format, the review procedure and the optional experimental model pins (a model may
+review only when one is explicitly pinned) are in
+[`skills/interface-matrix/SKILL.md`](skills/interface-matrix/SKILL.md).
+
+| Exit | Meaning |
+|---|---|
+| 0 | Report written — or, under `--certify`, certification passed and the record printed. |
+| 1 | Bad input row, of the input or of a ledger; a duplicate interface identity; or a `--certify` whose flags do not replay the recorded review. Every error names its line. |
+| 2 | The partition invariant tripping while the report renders — and argparse usage errors, which have always shared it and are now documented. |
+| 3 | Certification refused: every blocker (a drifted or unreviewed finding) is named in the record. |
 
 ## How it works
 
