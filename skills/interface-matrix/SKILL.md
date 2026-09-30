@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Requires Python 3.9 or newer (Windows: py -3). Standard library only — no dependencies and no install step."
 metadata:
   author: macblackstuff
-  version: 0.3.0
+  version: 0.4.0
   # Optional model pins — experimental until adapters exist; see "Model pins":
   # decision, thinker, reviewer, judge, each a model-name string, e.g.
   # reviewer: "a review model you independently trust"

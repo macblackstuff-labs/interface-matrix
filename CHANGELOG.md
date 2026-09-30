@@ -4,6 +4,46 @@
 
 (none)
 
+## 0.4.0 — 2026-09-30
+
+- Certification gate: `--certify LEDGER` judges a review ledger against the findings the
+  report derives from the input, instead of printing the report. Exit 0 — every finding
+  dispositioned, a certification record printed; exit 3 — refused, every blocker named in
+  the record. The ledger format and the gate's rules are SKILL.md §2–§3.
+- The review ledger is identity-keyed, not line-keyed: one table
+  (`Kind | Finding | Disposition | Reason | Reviewer | Date | Fingerprint`), one row per
+  finding — candidates and gaps as `producer -> consumer: flows`, unstated pairs
+  `A -> B`, boundary findings by component name, uncited spans `L7-9@<source sha256>` —
+  each pinning the content it dispositioned by fingerprint, so an unrelated edit does not
+  re-open a row.
+- Every certification run writes a record beside the ledger (`<ledger>.cert.md`) binding
+  the input, the report and (when `--source` ran) the source file by sha256, plus the
+  effective flags; a passing run also stamps it into the ledger as its
+  `## Certification record` section, and a later run whose flags do not replay the
+  recorded ones exits 1 naming the flag.
+- Drift detection: a ledger entry whose finding is gone from the input, or changed since
+  disposition, is a `drifted:` blocker — resolving a finding and dispositioning it are
+  both recorded, and the one can no longer masquerade as the other.
+- Under `--certify`, two active input rows sharing one `producer -> consumer: flows`
+  identity exit 1: the ledger cannot tell them apart.
+- SKILL.md workflow rewritten: review is writing the ledger (the first refusal record is
+  the worksheet), the finished deliverable is four files shipped together — report,
+  certification record, input, ledger — review runs under separation of duties (the
+  reviewer of record is someone other than whatever drafted the input), and a gap not
+  filled now is parked `open` and carried as an advisory, never a blocker.
+- Optional, experimental model pins: `decision`, `thinker`, `reviewer` and `judge` keys
+  under `metadata:` pin a role to a model. They are instructions to the executing agent,
+  not configuration — the script reads no pins, only its flags.
+- README and RUNBOOK document the certification flow: the exit codes (3 added; exit 2's
+  sharing with argparse usage errors was already true and is now written down), the
+  certify procedure, and the drift and flag-mismatch playbooks.
+- The worked example is now certified: `examples/example-ledger.md` dispositions every
+  finding `examples/example.md` produces, and `examples/example-ledger.cert.md` is the
+  record its passing `--certify` run wrote. The example input and its report are
+  unchanged from 0.3.0.
+- Standard-library additions: `hashlib` and `json` (fingerprints, record bindings). Still
+  no dependencies, no install step; the self-check now runs 115 tests.
+
 ## 0.3.0 — 2026-09-29
 
 - Windows is a supported platform: the script reconfigures stdout to UTF-8, so the report
