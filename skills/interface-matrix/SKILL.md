@@ -6,6 +6,9 @@ compatibility: "Requires Python 3.9 or newer (Windows: py -3). Standard library 
 metadata:
   author: macblackstuff
   version: 0.3.0
+  # Optional model pins — experimental until adapters exist; see "Model pins":
+  # decision, thinker, reviewer, judge, each a model-name string, e.g.
+  # reviewer: "a review model you independently trust"
 ---
 
 # interface-matrix
@@ -134,23 +137,78 @@ without `--source`.
 sample is drawn deterministically: round-robin across the producer rows that have
 unstated pairs, and spread evenly along each row so the picks sweep across columns. An
 unknown or duplicate component name exits 1 naming the input line, as does an active
-row naming a superseded component; valid input exits 0.
-Stdlib only, no install step.
+row naming a superseded component.
+
+Exit codes: 0 a valid input — report printed, or under `--certify` certification
+passed and the record printed; 1 bad input — a bad row of the input or of a ledger, a
+duplicate identity, or a `--certify` whose flags do not replay the review the ledger's
+record declares — every error naming its line; 2 the partition invariant tripping
+while the report renders, and argparse usage errors; 3 certification refused, every
+blocker named in the record. Stdlib only, no install step.
+
+`--certify LEDGER` certifies the input against a review ledger instead of printing
+the report:
+
+```bash
+python3 scripts/interface_matrix.py INPUT.md --certify INPUT.ledger.md
+```
+
+The ledger is a Markdown file kept beside the input and written during review (§3):
+one disposition table, `Kind | Finding | Disposition | Reason | Reviewer | Date |
+Fingerprint`, one row per finding, keyed by identity rather than input line. `Kind` is
+one of `candidate`, `gap`, `boundary`, `pair`, `span`; the `Finding` cell carries the
+identity — candidates and gaps read `producer -> consumer: flows`, unstated pairs
+`A -> B`, boundary findings the component's name, uncited spans `L7-9@<source sha256>`.
+`Reviewer` is the reviewer of record (§3) and `Date` when it reviewed; `Fingerprint`
+pins the content dispositioned — the record's blocker lines carry current fingerprints
+to paste. Every cell but `Reason` is required.
+
+An entry covers the finding whose identity it names when its fingerprint matches; the
+disposition text is the reviewer's judgment. Certification exits 0 when every finding
+the report derives from the input is dispositioned and none has drifted; 3 names
+every blocker — an entry whose finding is gone from the input or changed since
+disposition is `drifted:`, a finding no entry covers is `unreviewed:` — and lists
+every gap dispositioned with a `Disposition` starting `open` as an advisory, not a
+blocker. Under `--certify`, two active input rows sharing one
+`producer -> consumer: flows` identity also exit 1 (the ledger cannot tell them
+apart), as do the ledger's own bad rows: wrong width, unknown kind, a missing required
+cell, a duplicate identity, a second disposition table. Every run writes a record
+beside the ledger, `<ledger>.cert.md`, and prints it instead of the report: the input,
+report and (when `--source` ran) source file bound by sha256, the gate result, every
+blocker and advisory, and the effective flags, which a later certification must replay
+exactly. A pass also stamps the same record into the ledger as its
+`## Certification record` section, replacing the section a previous pass stamped.
 
 Self-check: `python3 scripts/test_interface_matrix.py`.
 
 Operating it — health checks, every error message and its fix, rollback and escalation:
 `references/RUNBOOK.md`.
 
-## 3. Human review is mandatory
+## 3. Independent review is mandatory
 
-Not optional and not delegable to another model pass. An LLM asked to generate a
-design structure matrix reproduced **357 of 462 entries — 77.3%** of a published
-matrix ([arXiv 2312.04134](https://arxiv.org/abs/2312.04134)): roughly one cell in
-four wrong or missing, and **false negatives dominate** — the interface that was never
-written down is the one that hurts. The sparse form hides exactly that error.
+Not optional, and not a second pass by whatever drafted the input. An LLM asked to
+generate a design structure matrix reproduced **357 of 462 entries — 77.3%** of a
+published matrix ([arXiv 2312.04134](https://arxiv.org/abs/2312.04134)): roughly one
+cell in four wrong or missing, and **false negatives dominate** — the interface that
+was never written down is the one that hurts. The sparse form hides exactly that
+error. That is the case for independent review, so review runs under separation of
+duties: the reviewer of record — the `Reviewer` the ledger names — must be someone
+other than whatever drafted the input. The default is an independent human reviewer;
+a model may hold the role only when the user explicitly pinned one ("Model pins"),
+and the ledger's `Reviewer` column records what actually reviewed either way.
 
-So review, cell by cell:
+Review is writing the ledger. Start it as nothing but the header:
+
+```markdown
+| Kind | Finding | Disposition | Reason | Reviewer | Date | Fingerprint |
+|---|---|---|---|---|---|---|
+```
+
+Certify once — with `--source` when the input cites one, or the uncited spans never
+enter review — and every finding comes back an `unreviewed:` blocker, named by
+identity and carrying its current fingerprint: the refusal record doubles as the
+review worksheet. A passing run's flags become the ones every later certification
+must replay. Work it cell by cell:
 
 1. Every listed row: are the four attributes right, and does the source support them?
    Then, per row: can the named producer actually produce this flow, and can the named
@@ -160,10 +218,18 @@ So review, cell by cell:
    the real endpoint is a component nobody declared yet).
 2. The rules (section 9): is each `none` rule true of every pair it matched? A dead rule
    is wrong or premature; a rule that also matches an explicit interface contradicts it.
-3. The residue (section 7): for each pair, is "no interface" actually true? Raise
-   `--sample` until you have looked at a share you can defend, or `--sample 0` for all.
+3. The residue (section 7): for each pair, is "no interface" actually true?
+   Certification needs a ledger row for every pair in the residue, not just the
+   sampled ones — raise `--sample` until you have looked at a share you can defend,
+   or `--sample 0` for all.
 4. The uncited spans (section 10): read each one. A span nothing cites is either
    irrelevant to the system or a component or interface nobody wrote down.
+
+Each blocker ends one of two ways. Resolved: fix the input (§4), the finding leaves
+the report — and any ledger row already written for it must go too, or certification
+reports it as `drifted:`. Or dispositioned: a ledger row that leaves the finding in
+place, covered, with the decision and its reason recorded. Rerun `--certify` after
+each pass; it exits 0 only when every finding is resolved or dispositioned.
 
 ## 4. Resolve the findings
 
@@ -179,7 +245,10 @@ So review, cell by cell:
 
 Rerun until there are no missing-component candidates and no unexplained boundary
 findings. Gaps and loops may legitimately remain — candidates and silent boundary
-findings may not.
+findings may not. A gap you are not filling now is parked, not ignored: disposition
+it in the ledger with a `Disposition` starting `open` — `open-parked` — and a reason
+it stays open, and certification carries it as an advisory in the record, never a
+blocker.
 
 ## 5. Record changes
 
@@ -193,6 +262,34 @@ entirely, though its citations are still range-checked under `--source`. A super
 exits 1 — supersede or repoint those rows in the same pass. Section 1 reports the count.
 A retired component may be re-declared under the same name in the addendum, and each name
 may have at most one active row.
+
+Then certify, and ship everything together:
+
+```bash
+python3 scripts/interface_matrix.py INPUT.md --certify INPUT.ledger.md
+```
+
+The matrix is not done until `--certify` exits 0 — a done-check that has not seen
+exit 0 has not seen a finished matrix. The finished deliverable is four files shipped
+together: the report, its certification record (`<ledger>.cert.md`), the input, and
+the ledger — enough for any consumer to re-run certification and check the record's
+sha256 bindings against the files they were sent. Generate the report under the flags
+the record declares, `--sample N` and `--source` as it names them, so its sha256 is
+the one the record binds. A report without its certification record is a draft.
+
+## Model pins (optional, experimental)
+
+Four optional keys may live under `metadata:` in this file's frontmatter —
+`decision`, `thinker`, `reviewer`, `judge` — each pinning that role to a model, as a
+plain string value (`reviewer: "a review model you independently trust"`). They are
+instructions to the agent executing the skill, not configuration: the Python script
+reads no pins, only its flags. Experimental until adapters exist. Harness-specific
+model settings (an agent's own `model` or `effort` fields) are non-portable and do
+not belong here. Pins written into an installed copy are overwritten by a
+`skills add` refresh, so persistent pinning means maintaining them in a fork or a
+local override. A pin names an intended reviewer, still bound by §3's separation of
+duties — distinct from whatever drafted the input; the ledger's `Reviewer` column
+records what actually reviewed.
 
 ## Reading the matrix
 
