@@ -18,6 +18,6 @@ The input from the README's Example section, as a real file. Run from
 
 | Producer | Consumer | Flows | Format | Trigger | Owner | Source | Status |
 |---|---|---|---|---|---|---|---|
-| Ingest | Store | raw event rows | ndjson file | nightly cron | platform | S:L42 |  |
-| Store | Scorer | event batches | ? | ? | platform | S:L44 |  |
+| Ingest | Store | raw event rows | ndjson file | nightly cron | platform |  |  |
+| Store | Scorer | event batches | ? | ? | platform |  |  |
 | ? | Analyst | weekly digest | ? | ? | ? |  |  |

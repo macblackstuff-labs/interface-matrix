@@ -12,7 +12,7 @@ repository root:
 | Kind | Finding | Disposition | Reason | Reviewer | Date | Fingerprint |
 |---|---|---|---|---|---|---|
 | candidate | ? -> Analyst: weekly digest | accepted | the digest is written by the on-call engineer of the week, a person outside the boundary; no component to declare until the reporting pass names the real producer | J. Merrick | 2026-09-30 | 4e139b0f50474d7629fd7d55b8a86689520d171e5726eba1ff659ea72106ea6c |
-| gap | Store -> Scorer: event batches | open-parked | format and trigger wait on the storage RFP, due before work packages are cut; gap register G-12 | J. Merrick | 2026-09-30 | 20c27832f848ac823ebf0c86955cfee63e322e7c6f89d44608158d600cb5a1be |
+| gap | Store -> Scorer: event batches | open-parked | format and trigger wait on the storage RFP, due before work packages are cut; gap register G-12 | J. Merrick | 2026-09-30 | efdae3966ddabbe36042c85f63e7235c49cc231accc8a6638ff20640cdd94a56 |
 | boundary | Ingest | accepted | Ingest is the system's source: it reads the external event broker, which is outside the boundary | J. Merrick | 2026-09-30 | 7b2acd46b8fe5961f6e95a9f7a8c2a4d2bb2e847c76fd0b2188585051eafc68c |
 | boundary | Scorer | accepted | scored events are read by the Analyst's ad-hoc queries at this stage; the digest interface will name the producer once the reporting pass lands | J. Merrick | 2026-09-30 | b07ad9ad99b47f37ce06a812f6e56d7b2c7cb966d3d130ecb7478c99bcd2418b |
 | pair | Ingest -> Scorer | none | Scorer reads event batches from Store, never straight from Ingest | J. Merrick | 2026-09-30 | 6e54deada7063a257816a5093992b19828fd166f36db2f46fffc8bfc36129e10 |
@@ -28,11 +28,14 @@ repository root:
 
 ## Certification record
 
-- input: ../../examples/example.md (sha256 d74e7e9eb77f183e25e1e80aef3d6c30eda65e5d01e648d20b67f491155a553b)
-- ledger: ../../examples/example-ledger.md
+- input: examples/example.md (sha256 52ec2692280ee34a4c87124e7fe7117a1dbecb87b63dbf83562664b1daebd1a2)
+- ledger: examples/example-ledger.md
 - gate: certified
 - report: sha256 1480d1f3872a8d603afa6ceaf17d868d4c225fe7a477dbd250b8312270cf224a
 - flags: --sample 20
 - blockers: none
-- advisories: 1
+- advisories: 4
+  - candidate ? -> Analyst: weekly digest (input line 23): accepted — the digest is written by the on-call engineer of the week, a person outside the boundary; no component to declare until the reporting pass names the real producer
   - gap Store -> Scorer: event batches (input line 22, missing Format, Trigger): open-parked — format and trigger wait on the storage RFP, due before work packages are cut; gap register G-12
+  - boundary Ingest (nothing feeds it): accepted — Ingest is the system's source: it reads the external event broker, which is outside the boundary
+  - boundary Scorer (nothing consumes its output): accepted — scored events are read by the Analyst's ad-hoc queries at this stage; the digest interface will name the producer once the reporting pass lands

@@ -55,8 +55,8 @@ report it produces is committed beside it as
 
 | Producer | Consumer | Flows | Format | Trigger | Owner | Source | Status |
 |---|---|---|---|---|---|---|---|
-| Ingest | Store | raw event rows | ndjson file | nightly cron | platform | S:L42 |  |
-| Store | Scorer | event batches | ? | ? | platform | S:L44 |  |
+| Ingest | Store | raw event rows | ndjson file | nightly cron | platform |  |  |
+| Store | Scorer | event batches | ? | ? | platform |  |  |
 | ? | Analyst | weekly digest | ? | ? | ? |  |  |
 ```
 
@@ -131,7 +131,7 @@ record the passing `--certify` run wrote.
 Verify the install from inside the installed folder with [`scripts/test_interface_matrix.py`](skills/interface-matrix/scripts/test_interface_matrix.py):
 
 ```bash
-python3 scripts/test_interface_matrix.py    # Ran 115 tests ... OK
+python3 scripts/test_interface_matrix.py    # Ran 125 tests ... OK
 ```
 
 On Windows the interpreter is `py -3` (`py -3 scripts/interface_matrix.py example.md`);
@@ -141,7 +141,7 @@ every platform.
 ### Harnesses tested
 
 CI installs the skill with the [`skills` CLI](https://github.com/vercel-labs/skills) on every push
-and pull request, once per agent in its own throwaway home, and runs the 115 tests from each
+and pull request, once per agent in its own throwaway home, and runs the 125 tests from each
 installed copy. Every agent the CLI supports is covered — 79 at the time of writing (`skills`
 1.7.0), of which 77 are installed and tested; the list is read from the CLI at run time. Two
 agents are excluded with reasons recorded in `.github/scripts/smoke-install.sh`: `eve` and
@@ -188,8 +188,12 @@ Disposition each finding in the ledger — the fingerprints to paste are in the 
 and certify again. Exit 0 writes `<ledger>.cert.md` beside the ledger: the certification
 record, binding the input, the report and (under `--source`) the source file by sha256,
 plus the flags the review ran under, which every later certification must replay exactly.
-The finished deliverable is four files shipped together: the report, its certification
-record, the input, and the ledger — enough for any consumer to re-run certification. The
+A citing input must certify with `--source` — the gate refuses it otherwise — and the
+record a pass stamps into the ledger anchors the input and source by sha256, so any
+post-review edit re-opens the review. The finished deliverable is four files shipped
+together: the report, its certification record, the input, and the ledger — five when
+the review ran under `--source`, adding the source file. The record's paths are
+invocation-relative and must be replayed verbatim. The
 ledger format, the review procedure and the optional experimental model pins (a model may
 review only when one is explicitly pinned) are in
 [`skills/interface-matrix/SKILL.md`](skills/interface-matrix/SKILL.md).

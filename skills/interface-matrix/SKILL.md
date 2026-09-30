@@ -157,7 +157,8 @@ The ledger is a Markdown file kept beside the input and written during review (�
 one disposition table, `Kind | Finding | Disposition | Reason | Reviewer | Date |
 Fingerprint`, one row per finding, keyed by identity rather than input line. `Kind` is
 one of `candidate`, `gap`, `boundary`, `pair`, `span`; the `Finding` cell carries the
-identity — candidates and gaps read `producer -> consumer: flows`, unstated pairs
+identity — candidates and gaps read `producer -> consumer: flows` (a blank Flows cell
+reads `?`, and pastes back as the empty identity), unstated pairs
 `A -> B`, boundary findings the component's name, uncited spans `L7-9@<source sha256>`.
 `Reviewer` is the reviewer of record (§3) and `Date` when it reviewed; `Fingerprint`
 pins the content dispositioned — the record's blocker lines carry current fingerprints
@@ -165,19 +166,31 @@ to paste. Every cell but `Reason` is required.
 
 An entry covers the finding whose identity it names when its fingerprint matches; the
 disposition text is the reviewer's judgment. Certification exits 0 when every finding
-the report derives from the input is dispositioned and none has drifted; 3 names
+of the five ledger kinds the report derives from the input — candidates, gaps,
+boundary findings, unstated pairs and uncited spans — is dispositioned and none has
+drifted; feedback loops, self-dependencies and class-rule audit findings are report
+findings a human reviews (§4/§9) — the gate does not disposition them. Exit 3 names
 every blocker — an entry whose finding is gone from the input or changed since
-disposition is `drifted:`, a finding no entry covers is `unreviewed:` — and lists
-every gap dispositioned with a `Disposition` starting `open` as an advisory, not a
-blocker. Under `--certify`, two active input rows sharing one
-`producer -> consumer: flows` identity also exit 1 (the ledger cannot tell them
-apart), as do the ledger's own bad rows: wrong width, unknown kind, a missing required
-cell, a duplicate identity, a second disposition table. Every run writes a record
-beside the ledger, `<ledger>.cert.md`, and prints it instead of the report: the input,
-report and (when `--source` ran) source file bound by sha256, the gate result, every
-blocker and advisory, and the effective flags, which a later certification must replay
-exactly. A pass also stamps the same record into the ledger as its
-`## Certification record` section, replacing the section a previous pass stamped.
+disposition is `drifted:`, a finding no entry covers is `unreviewed:` — and lists as
+advisories, not blockers, every gap dispositioned with a `Disposition` starting `open`
+and every candidate or boundary finding dispositioned with one not starting
+`resolved`: what ships stays visible in the record. Under `--certify`, two active
+input rows sharing one `producer -> consumer: flows` identity also exit 1 (the ledger
+cannot tell them apart), as does a component name containing ` -> ` or `: ` (no
+Finding cell can express it), an input that cites a source certified without
+`--source` (the uncited spans would never enter review), and the ledger's own bad
+rows: wrong width, unknown kind, a missing required cell, a duplicate identity, a
+second disposition table, a disposition row placed inside the certification-record
+section. A completed certification run — pass or refusal — writes a record beside the
+ledger, `<ledger>.cert.md`, and prints it instead of the report: the input, report and
+(when `--source` ran) source file bound by sha256, the gate result, every blocker and
+advisory, and the effective flags, which a later certification must replay exactly.
+An error (exit 1) writes nothing and leaves the previous record in place. A pass also
+stamps the same record into the ledger as its `## Certification record` section,
+replacing the section a previous pass stamped: that section is the last passing run
+and the replay anchor — a later run re-derives the input and source sha256 it binds,
+and any mismatch is a `drifted:` blocker (`input changed since the last certified
+run`), so any post-review edit of the input re-opens the whole review.
 
 Self-check: `python3 scripts/test_interface_matrix.py`.
 
@@ -204,11 +217,12 @@ Review is writing the ledger. Start it as nothing but the header:
 |---|---|---|---|---|---|---|
 ```
 
-Certify once — with `--source` when the input cites one, or the uncited spans never
-enter review — and every finding comes back an `unreviewed:` blocker, named by
-identity and carrying its current fingerprint: the refusal record doubles as the
-review worksheet. A passing run's flags become the ones every later certification
-must replay. Work it cell by cell:
+Certify once — with `--source` when the input cites one; the gate refuses a citing
+input certified without it, so the uncited spans cannot be skipped — and every finding
+of the five ledger kinds comes back an `unreviewed:` blocker, named by identity and
+carrying its current fingerprint: the refusal record doubles as the review worksheet.
+A passing run's flags become the ones every later certification must replay. Work it
+cell by cell:
 
 1. Every listed row: are the four attributes right, and does the source support them?
    Then, per row: can the named producer actually produce this flow, and can the named
@@ -226,10 +240,15 @@ must replay. Work it cell by cell:
    irrelevant to the system or a component or interface nobody wrote down.
 
 Each blocker ends one of two ways. Resolved: fix the input (§4), the finding leaves
-the report — and any ledger row already written for it must go too, or certification
-reports it as `drifted:`. Or dispositioned: a ledger row that leaves the finding in
-place, covered, with the decision and its reason recorded. Rerun `--certify` after
-each pass; it exits 0 only when every finding is resolved or dispositioned.
+the report — and any ledger row already written for it must go too (a ledger row is
+retired by deleting it; the ledger has no Status column — §5's supersede rule governs
+input rows), or certification reports it as `drifted:`. Or dispositioned: a ledger row
+that leaves the finding in place, covered, with the decision and its reason recorded.
+Rerun `--certify` after each pass; it exits 0 only when every finding of the five
+ledger kinds is resolved or dispositioned — feedback loops, self-dependencies and
+class-rule audit findings stay human-review findings (§4/§9) the gate does not
+disposition. Editing the input after a passing run re-opens the whole review: the
+ledger's stamped record section anchors the input by sha256.
 
 ## 4. Resolve the findings
 
@@ -243,12 +262,14 @@ each pass; it exits 0 only when every finding is resolved or dispositioned.
 | Feedback loop | Keep it. A human decides what to assume to break it; the script does not tear. |
 | Self-dependency | Usually a retry or a state carry-over. Confirm it is intended. |
 
-Rerun until there are no missing-component candidates and no unexplained boundary
-findings. Gaps and loops may legitimately remain — candidates and silent boundary
-findings may not. A gap you are not filling now is parked, not ignored: disposition
-it in the ledger with a `Disposition` starting `open` — `open-parked` — and a reason
-it stays open, and certification carries it as an advisory in the record, never a
-blocker.
+Each candidate and boundary finding ends one of two ways: resolved — fix the input
+(§1), the row leaves the report — or dispositioned with its reason; a dispositioned
+candidate or boundary finding stays visible in every report and is listed as an
+advisory in the certification record until it is resolved, so a shipping candidate is
+never silent. Gaps and loops may legitimately remain. A gap you are not filling now
+is parked, not ignored: disposition it in the ledger with a `Disposition` starting
+`open` — `open-parked` — and a reason it stays open, and certification carries it as
+an advisory in the record, never a blocker.
 
 ## 5. Record changes
 
@@ -272,10 +293,14 @@ python3 scripts/interface_matrix.py INPUT.md --certify INPUT.ledger.md
 The matrix is not done until `--certify` exits 0 — a done-check that has not seen
 exit 0 has not seen a finished matrix. The finished deliverable is four files shipped
 together: the report, its certification record (`<ledger>.cert.md`), the input, and
-the ledger — enough for any consumer to re-run certification and check the record's
-sha256 bindings against the files they were sent. Generate the report under the flags
-the record declares, `--sample N` and `--source` as it names them, so its sha256 is
-the one the record binds. A report without its certification record is a draft.
+the ledger — five when the review ran under `--source`, adding the source file, whose
+sha256 the record binds and whose checks the pinned flags require — enough for any
+consumer to re-run certification and check the record's sha256 bindings against the
+files they were sent. The record's paths are invocation-relative — the input, ledger
+and source paths exactly as the certified run named them — so a replay must use them
+verbatim. Generate the report under the flags the record declares, `--sample N` and
+`--source` as it names them, so its sha256 is the one the record binds. A report
+without its certification record is a draft.
 
 ## Model pins (optional, experimental)
 

@@ -13,7 +13,7 @@ skill's own directory.
 ```bash
 python3 scripts/test_interface_matrix.py
 ```
-Expected: `Ran 115 tests ... OK`, exit 0. Also run it under `python3 -O` — the partition
+Expected: `Ran 125 tests ... OK`, exit 0. Also run it under `python3 -O` — the partition
 check must survive assertions being stripped.
 
 ```bash
@@ -45,18 +45,24 @@ Expected: only `argparse`, `difflib`, `graphlib`, `hashlib`, `json`, `re`, `sys`
 
 5. **Certify a reviewed matrix.** Review writes a ledger beside the input — one table,
    `Kind | Finding | Disposition | Reason | Reviewer | Date | Fingerprint`, started as
-   nothing but the header. Certify once:
+   nothing but the header. Certify once — with `--source` when the input cites one (the
+   gate refuses a citing input certified without it) and under the `--sample` the review
+   used:
    ```bash
    python3 scripts/interface_matrix.py INPUT.md --certify INPUT.ledger.md
    ```
-   Exit 3: every finding the report derives comes back an `unreviewed:` blocker carrying
-   its current fingerprint — the refusal record (written beside the ledger on every run)
-   doubles as the review worksheet. Disposition every finding it names, copying the
-   fingerprints from the record's blocker lines, then certify again: exit 0, a `certified`
-   record, and the record also stamped into the ledger as its `## Certification record`
-   section. Certify with `--source` when the input cites one and under the `--sample` the
-   review used; the finished deliverable is four files — report, certification record,
-   input, ledger (SKILL.md §3).
+   Exit 3: every finding of the five ledger kinds comes back an `unreviewed:` blocker
+   carrying its current fingerprint — the refusal record doubles as the review worksheet.
+   Disposition every finding it names, copying the fingerprints from the record's blocker
+   lines, then certify again: exit 0, a `certified` record, and the record also stamped
+   into the ledger as its `## Certification record` section. A completed run (pass or
+   refusal) writes the record beside the ledger; an error (exit 1) writes nothing and
+   leaves the previous record in place. The section stamped inside the ledger is the
+   last passing run and the replay anchor — flags and input/source sha256 — while the
+   standalone record reflects the latest completed run; editing the input or source
+   after a pass re-opens the whole review. The finished deliverable is four files —
+   report, certification record, input, ledger — five under `--source`, whose paths the
+   record names as the run typed them (SKILL.md §3/§5).
 
 6. **Change the script.** Add or change a test in `scripts/test_interface_matrix.py` first and
    watch it fail, then change `scripts/interface_matrix.py`, then rerun the health check. Keep the
@@ -96,6 +102,10 @@ Expected: only `argparse`, `difflib`, `graphlib`, `hashlib`, `json`, `re`, `sys`
 | Everything lands in one giant feedback loop | Legitimate output for a densely coupled system. | Nothing to fix in the tool. A human decides what to assume to break the loop; the script deliberately does not tear. |
 | `error: certification refused: N blocker(s) (... unreviewed)` (exit 3) | Findings the report derives from the input that no ledger row covers — a header-only ledger's first run, or a review not finished. | Open `<ledger>.cert.md`: every blocker is named by identity, with the fingerprint to paste. Disposition each finding in the ledger, or fix the input so the finding leaves the report, and rerun. |
 | `drifted:` blockers (exit 3) | The input moved under the review: the finding is gone from the input (`no longer matches any ... finding`), or its content changed since disposition (the record names the current fingerprint). | A finding fixed in the input leaves the report, and its ledger row must go too (SKILL.md §3). A finding still present but edited needs its row re-reviewed — new fingerprint, new date; input rows are superseded, never reworded (§5). |
+| `drifted: input changed since the last certified run` (exit 3; same shape for `source`) | The ledger's stamped record section binds the sha256 of the input (or source file) of the last passing run, and the current file hashes differently — any edit re-opens the whole review, stated and explicit-`none` rows included, because those rows are never fingerprinted per-finding. | Re-review: the per-finding `drifted:` lines in the same record name what else moved; fix those, delete the stale `## Certification record` section, and certify again — a pass re-stamps a fresh anchor. |
+| `error: the input cites N source line(s) ...; certify with --source FILE so the uncited spans are reviewed` (exit 1) | The input cites `L<n>` source lines but `--certify` ran without `--source`: the first run is the only window in which span review can be skipped, and a pass would pin the hole into the record's flags. | Re-run with `--source FILE`, the file the citations were written against. |
+| `error: ledger line N: a disposition row cannot live inside a certification record` (exit 1) | A disposition table or row was placed after the `## Certification record` heading, where the record-section scan would silently swallow it. | Move those rows into the ledger's disposition table, above the record section. |
+| `error: component name 'A -> B' at line N: component names cannot contain ' -> ' or ': ' under certification` (exit 1) | The ledger's `Finding` identities are parsed out of those delimiters; a component name containing one cannot be pasted into a cell and parsed back — every retry would add false `drifted:` blockers. | Rename the component in the input and re-run. Generation is unaffected; only certification refuses the name. |
 | `error: the ledger's certification record declares --sample N but certification was invoked with --sample M` (exit 1; same wording for `--source`) | The record's flags pin the review, and `--certify` must replay them exactly — a run without `--source` cannot silently skip the span checks. | Rerun with the declared flags; the message names the flag and both values. To re-review under other flags, amend the ledger's certification-record section first, as the message says. |
 | `error: input rows at lines N and M share one interface identity (P -> C: flows); the review ledger cannot tell them apart` (exit 1, under `--certify`) | Two active interface rows share one `producer -> consumer: flows` — the identity the ledger keys on. | Distinguish the flows, or supersede or merge one of the rows, then certify again. |
 | `error: ledger row at line N ...` (exit 1) | A bad ledger row: wrong width, an unknown kind, a missing required cell, a duplicate identity — or a second disposition table in one ledger. | Fix the named row. The format — `Kind \| Finding \| Disposition \| Reason \| Reviewer \| Date \| Fingerprint`, kinds `candidate gap boundary pair span` — is SKILL.md §2. |
